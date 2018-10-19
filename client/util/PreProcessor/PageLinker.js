@@ -1,4 +1,4 @@
-export default class Linker {
+export default class PageLinker {
   process(markdown) {
     return markdown
       .replace(/\s\[(\/[^\]]+?)\](?!\()/g, ' <a href="$1">$1</a>') // ページ間リンク: [] でかこまれてて / から始まる
