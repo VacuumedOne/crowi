@@ -3,7 +3,7 @@ import Crowi from './Crowi'
 import marked from 'marked'
 import hljs from 'highlight.js'
 
-import MarkdownFixer from './PreProcessor/MarkdownFixer'
+import SectionFixer from './PreProcessor/SectionFixer'
 import PageLinker from './PreProcessor/PageLinker'
 import ImageExpander from './PreProcessor/ImageExpander'
 
@@ -18,7 +18,7 @@ export default class CrowiRenderer {
   constructor(crowi) {
     this.crowi = crowi
 
-    this.preProcessors = [new MarkdownFixer(crowi), new PageLinker(crowi), new ImageExpander(crowi)]
+    this.preProcessors = [new SectionFixer(crowi), new PageLinker(crowi), new ImageExpander(crowi)]
     this.postProcessors = [new Emoji(crowi), new Mathjax(crowi)]
 
     this.langProcessors = {
@@ -28,26 +28,37 @@ export default class CrowiRenderer {
       plantuml: new PlantUML(crowi),
     }
 
-    this.parseMarkdown = this.parseMarkdown.bind(this)
     this.codeRenderer = this.codeRenderer.bind(this)
+
+    this.renderer = new marked.Renderer()
+    this.renderer.code = this.codeRenderer
+
+    marked.setOptions({
+      gfm: true,
+      tables: true,
+      breaks: true,
+      pedantic: false,
+      sanitize: false,
+      smartLists: true,
+      smartypants: false,
+      renderer: this.renderer,
+    })
   }
 
-  preProcess(markdown, dom) {
-    for (let i = 0; i < this.preProcessors.length; i++) {
-      if (!this.preProcessors[i].process) {
-        continue
+  preProcess(tokens, dom) {
+    for (let processor of this.preProcessors) {
+      if (processor.process) {
+        tokens = processor.process(tokens, dom)
       }
-      markdown = this.preProcessors[i].process(markdown, dom)
     }
-    return markdown
+    return tokens
   }
 
   postProcess(html, dom) {
-    for (let i = 0; i < this.postProcessors.length; i++) {
-      if (!this.postProcessors[i].process) {
-        continue
+    for (let processor of this.postProcessors) {
+      if (!processor.process) {
+        html = processor.process(html, dom)
       }
-      html = this.postProcessors[i].process(html, dom)
     }
 
     return html
@@ -86,50 +97,41 @@ export default class CrowiRenderer {
     return `<pre class="wiki-code"><code>${Crowi.escape(code, true)}\n</code></pre>`
   }
 
-  parseMarkdown(markdown, dom) {
-    let parsed = ''
+  lex(markdown, dom) {
+    // override
+    marked.Lexer.lex = function(src, options) {
+      const lexer = new marked.Lexer(options)
 
-    const markedRenderer = new marked.Renderer()
-    markedRenderer.code = this.codeRenderer
-
-    try {
-      // TODO
-      marked.setOptions({
-        gfm: true,
-        tables: true,
-        breaks: true,
-        pedantic: false,
-        sanitize: false,
-        smartLists: true,
-        smartypants: false,
-        renderer: markedRenderer,
-      })
-
-      // override
-      marked.Lexer.lex = function(src, options) {
-        var lexer = new marked.Lexer(options)
-
-        // this is maybe not an official way
-        if (lexer.rules) {
-          lexer.rules.fences = /^ *(`{3,}|~{3,})[ .]*([^\r\n]+)? *\n([\s\S]*?)\s*\1 *(?:\n+|$)/
-        }
-
-        return lexer.lex(src)
+      // this is maybe not an official way
+      if (lexer.rules) {
+        lexer.rules.fences = /^ *(`{3,}|~{3,})[ .]*([^\r\n]+)? *\n([\s\S]*?)\s*\1 *(?:\n+|$)/
       }
 
-      parsed = marked(markdown)
+      return lexer.lex(src)
+    }
+
+    try {
+      return marked.lexer(markdown)
     } catch (e) {
       console.log(e, e.stack)
     }
+  }
 
-    return parsed
+  parse(tokens, dom) {
+    try {
+      return marked.parser(tokens)
+    } catch (e) {
+      console.log(e, e.stack)
+    }
   }
 
   render(markdown, dom) {
+    let tokens = []
     let html = ''
 
-    markdown = this.preProcess(markdown, dom)
-    html = this.parseMarkdown(markdown, dom)
+    tokens = this.lex(markdown)
+    tokens = this.preProcess(tokens, dom)
+    html = this.parse(tokens, dom)
     html = this.postProcess(html, dom)
 
     return html
