@@ -32,6 +32,15 @@ for (let [modelName, model] of Object.entries(models)) {
 }
 crowi.models = models
 
+// create dummy Socket.IO server
+crowi.getIo = function() {
+  return {
+    sockets: {
+      emit: function(str, obj) {},
+    },
+  }
+}
+
 module.exports = {
   models,
   mongoose,
