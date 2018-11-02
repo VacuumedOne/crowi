@@ -1,22 +1,13 @@
-const chai = require('chai')
-
-const expect = chai.expect
-
-const sinon = require('sinon')
-
-const sinonChai = require('sinon-chai')
-
 const utils = require('../utils.js')
-chai.use(sinonChai)
 
-describe('Activity', function() {
+describe('Activity', () => {
   const Activity = utils.models.Activity
   const mongoose = utils.mongoose
   const ObjectId = mongoose.Types.ObjectId
 
-  describe('.createByParameters', function() {
-    context('correct parameters', function() {
-      it('should create', function() {
+  describe('.createByParameters', () => {
+    describe('correct parameters', () => {
+      it('should create', () => {
         const userId = ObjectId()
         const targetId = ObjectId()
 
@@ -29,10 +20,10 @@ describe('Activity', function() {
 
         return Activity.createByParameters(parameters).then(
           function(activity) {
-            expect(activity.user).to.be.equal(userId)
-            expect(activity.target).to.be.equal(targetId)
-            expect(activity.targetModel).to.be.equal('Page')
-            expect(activity.action).to.be.equal('COMMENT')
+            expect(activity.user).toBe(userId)
+            expect(activity.target).toBe(targetId)
+            expect(activity.targetModel).toBe('Page')
+            expect(activity.action).toBe('COMMENT')
           },
           function(err) {
             throw new Error(err)
@@ -41,8 +32,8 @@ describe('Activity', function() {
       })
     })
 
-    context('invalid parameters', function() {
-      it('should not create', function() {
+    describe('invalid parameters', () => {
+      it('should not create', () => {
         const userId = ObjectId()
         const targetId = ObjectId()
 
@@ -58,7 +49,7 @@ describe('Activity', function() {
             throw new Error('not fulfilled')
           },
           function(err) {
-            expect(err.message).to.be.equal('Activity validation failed')
+            expect(err.message).toBe('Activity validation failed')
           },
         )
       })
@@ -66,18 +57,18 @@ describe('Activity', function() {
   })
 
   describe('.removeByParameters', () => {
-    context('correct parameters', () => {
+    describe('correct parameters', () => {
       const user = ObjectId()
       const target = ObjectId()
       const parameters = { user, targetModel: 'Page', target, action: 'COMMENT' }
 
-      before(async () => {
+      beforeAll(async () => {
         await Activity.createByParameters(parameters)
       })
 
       it('should remove', async () => {
         const { result } = await Activity.removeByParameters(parameters)
-        expect(result).to.deep.equal({ n: 1, ok: 1 })
+        expect(result).toEqual({ n: 1, ok: 1 })
       })
     })
   })
